@@ -2,7 +2,7 @@ package brave;
 
 import brave.http.HttpServerBenchmarks;
 import brave.okhttp3.TracingCallFactory;
-import brave.propagation.XRayPropagation;
+import brave.propagation.AmazonPropagation;
 import brave.sampler.Sampler;
 import brave.servlet.TracingFilter;
 import io.undertow.servlet.Servlets;
@@ -83,7 +83,7 @@ public class EndToEndBenchmarks extends HttpServerBenchmarks {
     public TracedXRay() {
       super(Tracing.newBuilder()
           .traceId128Bit(true)
-          .propagationFactory(new XRayPropagation.Factory())
+          .propagationFactory(new AmazonPropagation.Factory())
           .spanReporter(Reporter.NOOP)
           .build());
     }

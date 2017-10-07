@@ -5,19 +5,19 @@ import brave.propagation.Propagation;
 import brave.propagation.SamplingFlags;
 import brave.propagation.TraceContext;
 import brave.propagation.TraceIdContext;
-import brave.propagation.XRayPropagation;
+import brave.propagation.AmazonPropagation;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class XRayPropagationTest {
+public class AmazonPropagationTest {
   Map<String, String> carrier = new LinkedHashMap<>();
   TraceContext.Injector<Map<String, String>> injector =
-      new XRayPropagation.Factory().create(Propagation.KeyFactory.STRING).injector(Map::put);
+      new AmazonPropagation.Factory().create(Propagation.KeyFactory.STRING).injector(Map::put);
   TraceContext.Extractor<Map<String, String>> extractor =
-      new XRayPropagation.Factory().create(Propagation.KeyFactory.STRING).extractor(Map::get);
+      new AmazonPropagation.Factory().create(Propagation.KeyFactory.STRING).extractor(Map::get);
 
   String sampledTraceId =
       "Root=1-67891233-abcdef012345678912345678;Parent=463ac35c9f6413ad;Sampled=1";
@@ -29,7 +29,7 @@ public class XRayPropagationTest {
       .build();
 
   @Test public void traceIdString() throws Exception {
-    assertThat(XRayPropagation.traceIdString(sampledContext))
+    assertThat(AmazonPropagation.traceIdString(sampledContext))
         .isEqualTo("1-67891233-abcdef012345678912345678");
   }
 
@@ -43,6 +43,11 @@ public class XRayPropagationTest {
     carrier.put("x-amzn-trace-id", sampledTraceId);
 
     assertThat(extractor.extract(carrier).context())
+        .isEqualTo(sampledContext);
+  }
+
+  @Test public void extract_static() throws Exception {
+    assertThat(AmazonPropagation.extract(sampledTraceId).context())
         .isEqualTo(sampledContext);
   }
 

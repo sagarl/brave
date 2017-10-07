@@ -7,6 +7,14 @@ import static brave.internal.HexCodec.writeHexByte;
 import static brave.internal.HexCodec.writeHexLong;
 
 /**
+ * Utility for working with Amazon Trace IDs, for example reading from headers or environment variables.
+ *
+ * <p>For example, if you are in a lambda environment, you can read the incoming context like this:
+ * <pre>{@code
+ * extracted = AmazonPropagation.extract(System.getenv("_X_AMZN_TRACE_ID"));
+ * }</pre>
+ *
+ * <h3>Details</h3>
  * {@code x-amzn-trace-id} follows RFC 6265 style syntax (https://tools.ietf.org/html/rfc6265#section-2.2):
  * fields are split on semicolon and optional whitespace.
  *
@@ -24,10 +32,10 @@ import static brave.internal.HexCodec.writeHexLong;
  * </ul>
  * </pre>
  */
-public final class XRayPropagation<K> implements Propagation<K> {
+public final class AmazonPropagation<K> implements Propagation<K> {
   public static final class Factory extends Propagation.Factory {
     @Override public <K> Propagation<K> create(KeyFactory<K> keyFactory) {
-      return XRayPropagation.create(keyFactory);
+      return AmazonPropagation.create(keyFactory);
     }
 
     @Override public boolean requires128BitTraceId() {
@@ -35,8 +43,8 @@ public final class XRayPropagation<K> implements Propagation<K> {
     }
   }
 
-  public static <K> XRayPropagation<K> create(KeyFactory<K> keyFactory) {
-    return new XRayPropagation<>(keyFactory);
+  public static <K> AmazonPropagation<K> create(KeyFactory<K> keyFactory) {
+    return new AmazonPropagation<>(keyFactory);
   }
 
   // Using lowercase field name as http is case-insensitive, but http/2 transport downcases */
@@ -48,7 +56,7 @@ public final class XRayPropagation<K> implements Propagation<K> {
   final K traceIdKey;
   final List<K> fields;
 
-  XRayPropagation(KeyFactory<K> keyFactory) {
+  AmazonPropagation(KeyFactory<K> keyFactory) {
     this.traceIdKey = keyFactory.create(TRACE_ID_NAME);
     this.fields = Collections.singletonList(traceIdKey);
   }
@@ -59,14 +67,14 @@ public final class XRayPropagation<K> implements Propagation<K> {
 
   @Override public <C> TraceContext.Injector<C> injector(Setter<C, K> setter) {
     if (setter == null) throw new NullPointerException("setter == null");
-    return new XRayInjector<>(this, setter);
+    return new AmazonInjector<>(this, setter);
   }
 
-  static final class XRayInjector<C, K> implements TraceContext.Injector<C> {
-    final XRayPropagation<K> propagation;
+  static final class AmazonInjector<C, K> implements TraceContext.Injector<C> {
+    final AmazonPropagation<K> propagation;
     final Setter<C, K> setter;
 
-    XRayInjector(XRayPropagation<K> propagation, Setter<C, K> setter) {
+    AmazonInjector(AmazonPropagation<K> propagation, Setter<C, K> setter) {
       this.propagation = propagation;
       this.setter = setter;
     }
@@ -121,14 +129,28 @@ public final class XRayPropagation<K> implements Propagation<K> {
 
   @Override public <C> TraceContext.Extractor<C> extractor(Getter<C, K> getter) {
     if (getter == null) throw new NullPointerException("getter == null");
-    return new XRayExtractor(this, getter);
+    return new AmazonExtractor(this, getter);
   }
 
-  static final class XRayExtractor<C, K> implements TraceContext.Extractor<C> {
-    final XRayPropagation<K> propagation;
+  static final AmazonExtractor<String, String> STRING_EXTRACTOR =
+      new AmazonExtractor<>(new AmazonPropagation<>(KeyFactory.STRING), (carrier, key) -> carrier);
+
+  /**
+   * Like {@link TraceContext.Extractor#extract(Object)} except reading from a single field.
+   *
+   * <p>This is used for extracting from the AWS lambda environment variable {@code
+   * X_AMZN_TRACE_ID}.
+   */
+  public static TraceContextOrSamplingFlags extract(String amznTraceId) {
+    if (amznTraceId == null) throw new NullPointerException("amznTraceId == null");
+    return STRING_EXTRACTOR.extract(amznTraceId);
+  }
+
+  static final class AmazonExtractor<C, K> implements TraceContext.Extractor<C> {
+    final AmazonPropagation<K> propagation;
     final Getter<C, K> getter;
 
-    XRayExtractor(XRayPropagation<K> propagation, Getter<C, K> getter) {
+    AmazonExtractor(AmazonPropagation<K> propagation, Getter<C, K> getter) {
       this.propagation = propagation;
       this.getter = getter;
     }

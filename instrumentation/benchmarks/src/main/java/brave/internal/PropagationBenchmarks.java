@@ -18,7 +18,7 @@ import brave.propagation.TraceContext;
 import brave.propagation.TraceContext.Extractor;
 import brave.propagation.TraceContext.Injector;
 import brave.propagation.TraceContextOrSamplingFlags;
-import brave.propagation.XRayPropagation;
+import brave.propagation.AmazonPropagation;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -47,11 +47,11 @@ public class PropagationBenchmarks {
   static final Injector<Map<String, String>> b3Injector =
       Propagation.B3_STRING.injector(Map::put);
   static final Injector<Map<String, String>> awsInjector =
-      new XRayPropagation.Factory().create(Propagation.KeyFactory.STRING).injector(Map::put);
+      new AmazonPropagation.Factory().create(Propagation.KeyFactory.STRING).injector(Map::put);
   static final Extractor<Map<String, String>> b3Extractor =
       Propagation.B3_STRING.extractor(Map::get);
   static final Extractor<Map<String, String>> awsExtractor =
-      new XRayPropagation.Factory().create(Propagation.KeyFactory.STRING).extractor(Map::get);
+      new AmazonPropagation.Factory().create(Propagation.KeyFactory.STRING).extractor(Map::get);
 
   static final TraceContext context = TraceContext.newBuilder()
       .traceIdHigh(HexCodec.lowerHexToUnsignedLong("67891233abcdef01"))
